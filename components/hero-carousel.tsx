@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 
 const slides = [
   {
-    image: "https://img.freepik.com/premium-photo/hoodies-different-colors-hang-hanger_694697-83.jpg",
+    image: "https://down-my.img.susercontent.com/file/my-11134207-7r98y-lov0xk9a21sgf6",
     title: "Premium Hoodies",
     subtitle: "Experience Luxury Comfort",
   },
@@ -16,7 +16,7 @@ const slides = [
     subtitle: "Limited Edition",
   },
   {
-    image: "/https://tse3.mm.bing.net/th/id/OIP.L6C77smp2oHTgX_weInsuAHaEJ?pid=Api&P=0&h=180",
+    image: "https://tse1.mm.bing.net/th/id/OIP.d2m_GyjLUfGvTshAaaWowQHaHa?pid=Api&P=0&h=180",
     title: "Fashion elivates you ",
     subtitle: "Your Statement",
   },
