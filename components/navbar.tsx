@@ -23,16 +23,16 @@ export default function Navbar() {
         {/* Left - Menu */}
         <div className="hidden md:flex gap-8">
           <Link href="/" className="text-sm font-medium hover:underline">
-            MEN
+            COLLECTION
           </Link>
           <Link href="/" className="text-sm font-medium hover:underline">
-            WOMEN
+            TRACK-ORDER
           </Link>
           <Link href="/" className="text-sm font-medium hover:underline">
-            KIDS
+            ABOUT-US
           </Link>
           <Link href="/" className="text-sm font-medium hover:underline">
-            FOOTWEAR
+            CONTACT US
           </Link>
         </div>
 
