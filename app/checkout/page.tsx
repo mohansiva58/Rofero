@@ -4,12 +4,12 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
+import RazorpayPayment from "@/components/razorpay-payment"
 import { useCart } from "@/hooks/use-cart"
 import { useAuth } from "@/hooks/use-auth"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { AlertCircle, CheckCircle } from "lucide-react"
-import { processCODPayment, processOnlinePayment, validatePayment } from "@/lib/payment"
 
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCart()
@@ -59,7 +59,7 @@ export default function CheckoutPage() {
     setShippingAddress((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handlePlaceOrder = async () => {
+  const handleCODOrder = async () => {
     if (!user) {
       setShowLoginModal(true)
       return
@@ -70,56 +70,123 @@ export default function CheckoutPage() {
       return
     }
 
-    const validation = await validatePayment(paymentMethod as "cod" | "online", total)
-    if (!validation.valid) {
-      setError(validation.message)
-      return
-    }
-
     setLoading(true)
     setPaymentStatus("processing")
     setError("")
 
     try {
-      const orderId = `ORD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-
-      const chargeAmount = paymentMethod === "cod" ? codAdvanceAmount : total
-
-      let paymentResponse
-      if (paymentMethod === "cod") {
-        paymentResponse = await processCODPayment({
-          method: "cod",
-          orderId,
-          amount: chargeAmount,
-          currency: "INR",
-          userEmail: user.email || "",
-        })
-      } else {
-        paymentResponse = await processOnlinePayment({
-          method: "online",
-          orderId,
-          amount: total,
-          currency: "INR",
-          userEmail: user.email || "",
-        })
+      // Prepare order data
+      const orderData = {
+        userId: user.uid,
+        userEmail: user.email,
+        items: items.map(item => ({
+          productId: String(item.id), // Convert to string for MongoDB ObjectId
+          name: item.name,
+          image: item.image,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+        shippingAddress,
+        paymentMethod: "cod",
+        paymentStatus: "pending",
+        subtotal: total,
+        tax: Math.round(total * 0.18),
+        total: totalWithTax,
       }
 
-      if (paymentResponse.success) {
-        setPaymentStatus("success")
-        setOrderPlaced(true)
-        clearCart()
-        setTimeout(() => {
-          router.push("/order-confirmation")
-        }, 2000)
-      } else {
-        throw new Error(paymentResponse.message)
+      // Save order to MongoDB
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData),
+      })
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || "Failed to create order")
       }
+
+      console.log("COD Order created:", result.order)
+      
+      setPaymentStatus("success")
+      setOrderPlaced(true)
+      clearCart()
+      
+      setTimeout(() => {
+        router.push(`/order-confirmation?orderNumber=${result.order.orderNumber}`)
+      }, 2000)
     } catch (err) {
       setPaymentStatus("failed")
-      setError(err instanceof Error ? err.message : "Payment processing failed. Please try again.")
+      setError(err instanceof Error ? err.message : "Order placement failed. Please try again.")
     } finally {
       setLoading(false)
     }
+  }
+
+  const handlePaymentSuccess = async (response: any) => {
+    console.log("Payment successful:", response)
+    setPaymentStatus("processing")
+    setError("")
+
+    try {
+      // Prepare order data with Razorpay payment details
+      const orderData = {
+        userId: user?.uid,
+        userEmail: user?.email,
+        items: items.map(item => ({
+          productId: String(item.id), // Convert to string for MongoDB ObjectId
+          name: item.name,
+          image: item.image,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+        shippingAddress,
+        paymentMethod: "online",
+        paymentStatus: "paid",
+        paymentDetails: {
+          razorpayOrderId: response.razorpay_order_id,
+          razorpayPaymentId: response.razorpay_payment_id,
+          razorpaySignature: response.razorpay_signature,
+          method: "razorpay",
+        },
+        subtotal: total,
+        tax: Math.round(total * 0.18),
+        total: totalWithTax,
+      }
+
+      // Save order to MongoDB
+      const orderResponse = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData),
+      })
+
+      const result = await orderResponse.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || "Failed to create order")
+      }
+
+      console.log("Online Order created:", result.order)
+      
+      setPaymentStatus("success")
+      setOrderPlaced(true)
+      clearCart()
+      
+      setTimeout(() => {
+        router.push(`/order-confirmation?orderNumber=${result.order.orderNumber}`)
+      }, 2000)
+    } catch (err) {
+      setPaymentStatus("failed")
+      setError(err instanceof Error ? err.message : "Failed to save order. Please contact support.")
+    }
+  }
+
+  const handlePaymentFailure = (error: any) => {
+    console.error("Payment failed:", error)
+    setPaymentStatus("failed")
+    setError(error.message || "Payment failed. Please try again.")
   }
 
   if (items.length === 0) {
@@ -234,8 +301,8 @@ export default function CheckoutPage() {
                       className="mt-0.5"
                     />
                     <div className="flex-1">
-                      <span className="font-semibold text-sm md:text-base">Cash on Delivery (COD)</span>
-                      <p className="text-xs text-gray-600 mt-1">Pay ₹{codAdvanceAmount} now (10%), rest at delivery</p>
+                      <span className="font-semibold text-sm md:text-base">Cash on Delivery</span>
+                      <p className="text-xs text-gray-600 mt-1">Pay when your order arrives at your doorstep</p>
                     </div>
                   </label>
 
@@ -246,16 +313,13 @@ export default function CheckoutPage() {
                       value="online"
                       checked={paymentMethod === "online"}
                       onChange={(e) => setPaymentMethod(e.target.value)}
-                      disabled={total < minOnlineAmount}
                       className="mt-0.5"
                     />
                     <div className="flex-1">
-                      <span className="font-semibold text-sm md:text-base">Online Payment & EMI</span>
-                      {total < minOnlineAmount && (
-                        <p className="text-xs text-gray-600 mt-1">Minimum ₹{minOnlineAmount} required</p>
-                      )}
-                      {paymentMethod === "online" && total >= minOnlineAmount && (
-                        <p className="text-xs text-teal-600 font-medium mt-1">0% EMI available on select plans</p>
+                      <span className="font-semibold text-sm md:text-base">Pay Online (Razorpay)</span>
+                      <p className="text-xs text-gray-600 mt-1">UPI, Cards, Net Banking, Wallets</p>
+                      {paymentMethod === "online" && (
+                        <p className="text-xs text-green-600 font-medium mt-1">✓ Secure payment via Razorpay</p>
                       )}
                     </div>
                   </label>
@@ -325,39 +389,62 @@ export default function CheckoutPage() {
               <div className="mb-4 md:mb-6 p-3 md:p-4 bg-gray-50 rounded">
                 <p className="text-xs md:text-sm font-semibold text-gray-700 mb-2">Payment Method</p>
                 <p className="text-xs md:text-sm capitalize font-medium">
-                  {paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment & EMI"}
+                  {paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment (Razorpay)"}
                 </p>
                 {paymentMethod === "cod" && (
                   <div className="mt-3 p-2 md:p-3 bg-blue-50 border border-blue-200 rounded text-xs">
-                    <p className="font-semibold text-blue-900">Payment Breakdown:</p>
-                    <p className="text-blue-800 mt-1">Now: ₹{codAdvanceAmount.toLocaleString("en-IN")} (10%)</p>
-                    <p className="text-blue-800">
-                      At Delivery: ₹{(totalWithTax - codAdvanceAmount).toLocaleString("en-IN")} (90%)
-                    </p>
+                    <p className="font-semibold text-blue-900">COD Order</p>
+                    <p className="text-blue-800 mt-1">Pay cash when your order arrives</p>
+                  </div>
+                )}
+                {paymentMethod === "online" && (
+                  <div className="mt-3 p-2 md:p-3 bg-green-50 border border-green-200 rounded text-xs">
+                    <p className="font-semibold text-green-900">Secure Online Payment</p>
+                    <p className="text-green-800 mt-1">Pay using UPI, Cards, Net Banking, or Wallets</p>
                   </div>
                 )}
               </div>
 
-              <button
-                onClick={handlePlaceOrder}
-                disabled={!user || orderPlaced || loading || paymentStatus === "processing"}
-                className={`w-full py-2.5 md:py-3 text-sm md:text-base rounded font-semibold transition ${
-                  user && !orderPlaced && !(loading || paymentStatus === "processing")
-                    ? "bg-black text-white hover:bg-gray-900"
-                    : "bg-gray-300 text-gray-600 cursor-not-allowed"
-                }`}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="inline-block w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
-                    {paymentMethod === "cod" ? "Processing Order..." : "Processing Payment..."}
-                  </span>
-                ) : paymentStatus === "success" ? (
-                  "Order Confirmed!"
-                ) : (
-                  `Pay ₹${(paymentMethod === "cod" ? codAdvanceAmount : totalWithTax).toLocaleString("en-IN")}`
-                )}
-              </button>
+              {paymentMethod === "online" ? (
+                <RazorpayPayment
+                  amount={totalWithTax}
+                  orderId={`ORD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`}
+                  customerDetails={{
+                    name: shippingAddress.name,
+                    email: shippingAddress.email,
+                    phone: shippingAddress.phone,
+                  }}
+                  onSuccess={handlePaymentSuccess}
+                  onFailure={handlePaymentFailure}
+                  buttonText={`Pay ₹${totalWithTax.toLocaleString("en-IN")}`}
+                  buttonClassName={`w-full py-2.5 md:py-3 text-sm md:text-base rounded font-semibold transition ${
+                    user && !orderPlaced && !shippingAddress.name && !shippingAddress.phone && !shippingAddress.address
+                      ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                      : "bg-black text-white hover:bg-gray-900"
+                  }`}
+                />
+              ) : (
+                <button
+                  onClick={handleCODOrder}
+                  disabled={!user || orderPlaced || loading || paymentStatus === "processing" || !shippingAddress.name || !shippingAddress.phone || !shippingAddress.address}
+                  className={`w-full py-2.5 md:py-3 text-sm md:text-base rounded font-semibold transition ${
+                    user && !orderPlaced && !(loading || paymentStatus === "processing") && shippingAddress.name && shippingAddress.phone && shippingAddress.address
+                      ? "bg-black text-white hover:bg-gray-900"
+                      : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                  }`}
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="inline-block w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                      Processing Order...
+                    </span>
+                  ) : paymentStatus === "success" ? (
+                    "Order Confirmed!"
+                  ) : (
+                    `Place COD Order - ₹${totalWithTax.toLocaleString("en-IN")}`
+                  )}
+                </button>
+              )}
               {!user && <p className="text-xs md:text-sm text-gray-600 text-center mt-3">Login required to proceed</p>}
             </div>
           </div>

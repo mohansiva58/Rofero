@@ -57,7 +57,7 @@ export default function HeroCarousel() {
   const colors = currentSlide.colors
 
   return (
-    <div className="relative w-full h-screen md:h-[600px] lg:h-[700px] overflow-hidden bg-gray-900">
+    <div className="relative w-full h-[70vh] md:h-[450px] lg:h-[550px] overflow-hidden bg-gray-900">
       {slides.map((slide, index) => (
         <div
           key={index}

@@ -39,7 +39,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="group">
       <Link href={`/product/${product.id}`} className="block">
-        <div className="relative overflow-hidden bg-gray-200 rounded-lg mb-3 md:mb-4 h-64 sm:h-72 md:h-80 cursor-pointer">
+        <div className="relative overflow-hidden bg-gray-200 rounded-lg mb-2 md:mb-4 h-48 sm:h-64 md:h-80 cursor-pointer">
           <img
             src={product.image || "/placeholder.svg"}
             alt={product.name}
@@ -73,18 +73,18 @@ export default function ProductCard({ product }: ProductCardProps) {
       </Link>
 
       <Link href={`/product/${product.id}`} className="hover:underline">
-        <h3 className="text-sm md:text-base font-bold mb-2 line-clamp-2">{product.name}</h3>
+        <h3 className="text-xs md:text-base font-bold mb-1 md:mb-2 line-clamp-2">{product.name}</h3>
       </Link>
 
-      <div className="mb-2 md:mb-3">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="mb-1 md:mb-3">
+        <div className="flex items-center gap-1 md:gap-2 flex-wrap">
           {product.mrp && (
             <>
               <p className="text-xs text-gray-600">MRP</p>
-              <p className="text-sm md:text-base text-gray-400 line-through">₹{product.mrp.toLocaleString("en-IN")}</p>
+              <p className="text-xs md:text-base text-gray-400 line-through">₹{product.mrp.toLocaleString("en-IN")}</p>
             </>
           )}
-          <p className="font-bold text-lg md:text-xl">₹{product.price.toLocaleString("en-IN")}</p>
+          <p className="font-bold text-base md:text-xl">₹{product.price.toLocaleString("en-IN")}</p>
           {product.discount && (
             <span className="text-xs md:text-sm text-red-600 font-bold">{product.discount}%</span>
           )}

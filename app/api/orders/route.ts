@@ -1,55 +1,118 @@
-import { MongoClient } from "mongodb"
+import { NextResponse } from "next/server"
+import { connectDB } from "@/lib/mongodb"
+import Order from "@/models/Order"
 
-const uri = process.env.MONGODB_URI || "mongodb+srv://rarerabbit:r@rer@bbit@rarerabbit.uyfrgct.mongodb.net/thehouseofrare?retryWrites=true&w=majority&appName=rarerabbit"
-
-export async function GET() {
-  const client = new MongoClient(uri)
-
+// Get orders
+export async function GET(request: Request) {
   try {
-    await client.connect()
-    const db = client.db("thehouseofrare")
-    const orders = await db.collection("orders").find({}).toArray()
+    await connectDB()
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId")
+    const userEmail = searchParams.get("userEmail")
+    const orderNumber = searchParams.get("orderNumber")
 
-    console.log("[v0] Orders fetched from MongoDB")
-    return Response.json({ success: true, data: orders })
-  } catch (error) {
-    console.error("[v0] MongoDB error:", error)
-    return Response.json(
+    let query: any = {}
+
+    // If both orderNumber and userEmail are provided (for tracking)
+    if (orderNumber && userEmail) {
+      query.orderNumber = orderNumber
+      query.userEmail = userEmail
+    }
+    // If only orderNumber is provided
+    else if (orderNumber) {
+      query.orderNumber = orderNumber
+    }
+    // If userId is provided (for user's orders)
+    else if (userId) {
+      query.userId = userId
+    }
+    // If only userEmail is provided
+    else if (userEmail) {
+      query.userEmail = userEmail
+    }
+
+    const orders = await Order.find(query)
+      .sort({ createdAt: -1 })
+      .limit(100)
+
+    console.log("[Orders API] Orders fetched from MongoDB:", orders.length)
+    return NextResponse.json({ success: true, data: orders, orders })
+  } catch (error: any) {
+    console.error("[Orders API] MongoDB error:", error)
+    return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-        data: [], // Return empty array as fallback
+        error: error.message || "Unknown error",
+        data: [],
       },
-      { status: 500 },
+      { status: 500 }
     )
-  } finally {
-    await client.close()
   }
 }
 
+// Create new order
 export async function POST(request: Request) {
-  const client = new MongoClient(uri)
-
   try {
+    await connectDB()
     const body = await request.json()
-    await client.connect()
-    const db = client.db("thehouseofrare")
 
-    const result = await db.collection("orders").insertOne({
-      ...body,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const {
+      userId,
+      userEmail,
+      items,
+      shippingAddress,
+      paymentMethod,
+      paymentStatus,
+      paymentDetails,
+      subtotal,
+      tax,
+      total,
+    } = body
+
+    // Validate required fields
+    if (!userId || !userEmail || !items || !shippingAddress || !paymentMethod) {
+      return NextResponse.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
+      )
+    }
+
+    // Generate unique order number
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+
+    // Create order
+    const order = await Order.create({
+      userId,
+      userEmail,
+      orderNumber,
+      items,
+      shippingAddress,
+      paymentMethod,
+      paymentStatus: paymentStatus || "pending",
+      paymentDetails: paymentDetails || {},
+      orderStatus: paymentMethod === "online" && paymentStatus === "paid" ? "confirmed" : "pending",
+      subtotal,
+      tax,
+      total,
     })
 
-    console.log("[v0] Order created:", result.insertedId)
-    return Response.json({ success: true, data: result })
-  } catch (error) {
-    console.error("[v0] MongoDB error:", error)
-    return Response.json(
-      { success: false, error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 },
+    console.log("[Orders API] Order created:", order.orderNumber)
+    return NextResponse.json({
+      success: true,
+      data: order,
+      order: {
+        id: order._id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        status: order.orderStatus,
+        paymentStatus: order.paymentStatus,
+      },
+    })
+  } catch (error: any) {
+    console.error("[Orders API] Create order error:", error)
+    return NextResponse.json(
+      { success: false, error: error.message || "Failed to create order" },
+      { status: 500 }
     )
-  } finally {
-    await client.close()
   }
 }

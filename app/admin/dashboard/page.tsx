@@ -43,6 +43,7 @@ interface Order {
   total: number
   orderStatus: string
   paymentStatus: string
+  paymentMethod: string
   createdAt: string
   items: any[]
 }
@@ -123,6 +124,83 @@ export default function AdminDashboard() {
     }
   }
 
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderStatus: newStatus }),
+      })
+      
+      const result = await res.json()
+      
+      if (result.success) {
+        // Update local state to reflect change immediately
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === orderId ? { ...order, orderStatus: newStatus } : order
+          )
+        )
+        // Recalculate stats
+        const updatedOrders = orders.map(order => 
+          order._id === orderId ? { ...order, orderStatus: newStatus } : order
+        )
+        calculateStats(updatedOrders, products)
+
+        // Send email notification based on status
+        const order = orders.find(o => o._id === orderId)
+        if (order && (newStatus === 'shipped' || newStatus === 'delivered' || newStatus === 'cancelled')) {
+          const emailTypes: Record<string, string> = {
+            shipped: 'orderShipped',
+            delivered: 'orderDelivered',
+            cancelled: 'orderCancelled',
+          }
+
+          const subjects: Record<string, string> = {
+            shipped: '📦 Your Order Has Been Shipped!',
+            delivered: '🎉 Your Order Has Been Delivered!',
+            cancelled: 'Order Cancelled - The House of Rare',
+          }
+
+          // Send email in background (don't await to avoid blocking UI)
+          fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: order.userEmail,
+              subject: subjects[newStatus],
+              type: emailTypes[newStatus],
+              data: {
+                userName: order.userEmail.split('@')[0],
+                orderNumber: order.orderNumber,
+                orderDate: order.createdAt,
+                total: order.total,
+                itemCount: order.items?.length || 0,
+                paymentMethod: order.paymentMethod,
+                shippingAddress: {
+                  name: 'Customer',
+                  address: 'Address on file',
+                  city: 'City',
+                  state: 'State',
+                  pincode: '000000',
+                  phone: '0000000000',
+                },
+                trackUrl: `${window.location.origin}/my-orders`,
+                shopUrl: `${window.location.origin}/shop`,
+                reviewUrl: `${window.location.origin}/profile`,
+              },
+            }),
+          }).catch(err => console.error('Failed to send email:', err))
+        }
+      } else {
+        alert("Failed to update order status")
+      }
+    } catch (error) {
+      console.error("Failed to update order status:", error)
+      alert("Failed to update order status")
+    }
+  }
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: "bg-yellow-100 text-yellow-800",
@@ -155,12 +233,7 @@ export default function AdminDashboard() {
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
               <p className="text-gray-600 mt-1 text-sm">Manage products, orders, and analytics</p>
             </div>
-            <Link
-              href="/"
-              className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition text-sm"
-            >
-              View Website
-            </Link>
+         
           </div>
 
           {/* Tabs */}
@@ -399,8 +472,6 @@ export default function AdminDashboard() {
                     >
                       <option value="all">All Status</option>
                       <option value="pending">Pending</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="processing">Processing</option>
                       <option value="shipped">Shipped</option>
                       <option value="delivered">Delivered</option>
                       <option value="cancelled">Cancelled</option>
@@ -439,14 +510,44 @@ export default function AdminDashboard() {
                               <p className="font-semibold">₹{order.total.toLocaleString("en-IN")}</p>
                             </td>
                             <td className="py-4 px-4 sm:px-6">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.paymentStatus)}`}>
-                                {order.paymentStatus}
-                              </span>
+                              <div className="flex flex-col gap-1">
+                                {order.paymentMethod === "cod" ? (
+                                  <span className="px-2 py-1 rounded-full text-xs font-semibold inline-block w-fit bg-yellow-100 text-yellow-700">
+                                    COD
+                                  </span>
+                                ) : order.paymentStatus === "paid" ? (
+                                  <span className="px-2 py-1 rounded-full text-xs font-semibold inline-block w-fit bg-green-100 text-green-700">
+                                    Paid
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 rounded-full text-xs font-semibold inline-block w-fit bg-yellow-100 text-yellow-700">
+                                    {order.paymentStatus}
+                                  </span>
+                                )}
+                                <span className="text-xs text-gray-500">
+                                  {order.paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
+                                </span>
+                              </div>
                             </td>
                             <td className="py-4 px-4 sm:px-6">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.orderStatus)}`}>
-                                {order.orderStatus}
-                              </span>
+                              <select
+                                value={order.orderStatus}
+                                onChange={(e) => updateOrderStatus(order._id, e.target.value)}
+                                className={`px-3 py-1.5 rounded-lg border-2 text-xs font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-black transition ${
+                                  order.orderStatus === "delivered"
+                                    ? "border-green-200 bg-green-50 text-green-700"
+                                    : order.orderStatus === "shipped"
+                                      ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                                      : order.orderStatus === "cancelled"
+                                        ? "border-red-200 bg-red-50 text-red-700"
+                                        : "border-yellow-200 bg-yellow-50 text-yellow-700"
+                                }`}
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="shipped">Shipped</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
                             </td>
                             <td className="py-4 px-4 sm:px-6">
                               <p className="text-gray-600">{new Date(order.createdAt).toLocaleDateString()}</p>

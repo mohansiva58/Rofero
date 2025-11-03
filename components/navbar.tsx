@@ -34,7 +34,7 @@ export default function Navbar() {
   return (
     <nav className="w-full bg-white sticky top-0 z-50 border-b border-gray-200">
       {/* Main Navbar */}
-      <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 py-3 md:py-4 max-w-7xl mx-auto w-full">
+      <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 py-2 md:py-3 max-w-7xl mx-auto w-full">
         {/* Left - Mobile Menu Button + Desktop Menu */}
         <div className="flex items-center gap-4 md:gap-8">
           <button
@@ -53,9 +53,7 @@ export default function Navbar() {
             <Link href="/about" className="block text-sm font-semibold hover:text-gray-600 transition">
               ABOUT US
             </Link>
-            <Link href="/track" className="block text-sm font-semibold hover:text-gray-600 transition">
-              TRACK ORDER
-            </Link>
+             
           </div>
         </div>
 
@@ -126,7 +124,7 @@ export default function Navbar() {
                         My Profile
                       </Link>
                       <Link
-                        href="/orders"
+                        href="/my-orders"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         onClick={() => setShowUserMenu(false)}
                       >

@@ -53,6 +53,7 @@ export default function TrackPage() {
       return
     }
 
+    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       setError("Please enter a valid email address")
@@ -112,12 +113,25 @@ export default function TrackPage() {
     }))
   }
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "delivered":
+        return "bg-green-100 text-green-800"
+      case "shipped":
+        return "bg-blue-100 text-blue-800"
+      case "processing":
+        return "bg-yellow-100 text-yellow-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
   return (
     <>
       <Navbar />
       <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 py-12">
         <div className="max-w-4xl mx-auto px-6">
-          {/* Header */}
+          {/* Header with Animation */}
           <div className="text-center mb-10 animate-fade-in">
             <div className="relative inline-block mb-4">
               <Package className="w-16 h-16 mx-auto text-gray-700 animate-bounce-slow" />
@@ -129,7 +143,7 @@ export default function TrackPage() {
             <p className="text-gray-600 text-lg">Enter your order details to track your shipment in real-time</p>
           </div>
 
-          {/* Search Card */}
+          {/* Search Card with Animation */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-gray-100 animate-slide-up">
             <div className="space-y-4">
               <div className="relative group">
@@ -186,8 +200,9 @@ export default function TrackPage() {
               </p>
             </div>
           )}
+          </div>
 
-          {/* Tracking Details */}
+          {/* Tracking Details with Animation */}
           {showResult && foundOrder && (
             <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 md:p-8 shadow-xl animate-slide-up-fade">
               {/* Order Header */}
@@ -210,14 +225,14 @@ export default function TrackPage() {
                     foundOrder.orderStatus === "delivered"
                       ? "bg-green-100 text-green-800"
                       : foundOrder.orderStatus === "shipped"
-                      ? "bg-blue-100 text-blue-800"
-                      : foundOrder.orderStatus === "packaged"
-                      ? "bg-purple-100 text-purple-800"
-                      : foundOrder.orderStatus === "confirmed"
-                      ? "bg-indigo-100 text-indigo-800"
-                      : foundOrder.orderStatus === "cancelled"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-yellow-100 text-yellow-800"
+                        ? "bg-blue-100 text-blue-800"
+                        : foundOrder.orderStatus === "packaged"
+                          ? "bg-purple-100 text-purple-800"
+                          : foundOrder.orderStatus === "confirmed"
+                            ? "bg-indigo-100 text-indigo-800"
+                            : foundOrder.orderStatus === "cancelled"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
                   }`}
                 >
                   {foundOrder.orderStatus}
@@ -247,7 +262,9 @@ export default function TrackPage() {
                 <div className="mb-8">
                   <h3 className="font-bold text-xl mb-6 text-gray-800">Delivery Timeline</h3>
                   <div className="relative">
+                    {/* Progress Bar Background */}
                     <div className="absolute left-2 top-2 bottom-2 w-1 bg-gray-200 rounded-full"></div>
+                    {/* Animated Progress Bar */}
                     <div
                       className="absolute left-2 top-2 w-1 bg-gradient-to-b from-green-600 to-blue-600 rounded-full transition-all duration-1000 ease-out"
                       style={{
@@ -257,11 +274,17 @@ export default function TrackPage() {
 
                     <div className="space-y-6">
                       {getTrackingSteps(foundOrder.orderStatus).map((event, index) => (
-                        <div key={index} className={`flex gap-4 items-start relative animate-slide-in-left`} style={{ animationDelay: `${index * 100}ms` }}>
+                        <div
+                          key={index}
+                          className={`flex gap-4 items-start relative animate-slide-in-left`}
+                          style={{ animationDelay: `${index * 100}ms` }}
+                        >
                           <div className="relative z-10">
                             <div
                               className={`w-5 h-5 rounded-full border-4 border-white shadow-md transition-all duration-300 ${
-                                event.completed ? "bg-gradient-to-br from-green-500 to-blue-600 scale-110" : "bg-gray-300"
+                                event.completed
+                                  ? "bg-gradient-to-br from-green-500 to-blue-600 scale-110"
+                                  : "bg-gray-300"
                               }`}
                             />
                           </div>
@@ -298,7 +321,11 @@ export default function TrackPage() {
                 <h3 className="font-bold text-xl mb-4 text-gray-800">Items in This Order</h3>
                 <div className="space-y-3">
                   {foundOrder.items.map((item, i) => (
-                    <div key={i} className="flex items-center gap-4 bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-lg animate-slide-in-left" style={{ animationDelay: `${i * 50}ms` }}>
+                    <div
+                      key={i}
+                      className="flex items-center gap-4 bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-lg animate-slide-in-left"
+                      style={{ animationDelay: `${i * 50}ms` }}
+                    >
                       <img
                         src={item.image || "/placeholder.svg"}
                         alt={item.name}
@@ -317,13 +344,16 @@ export default function TrackPage() {
               </div>
 
               {/* Shipping Address */}
-              <div className="mt-8 border-t border-gray-200 pt-6">
+              <div className="border-t border-gray-200 pt-6 mt-6">
                 <h3 className="font-bold text-xl mb-4 text-gray-800">Shipping Address</h3>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-800 font-semibold">{foundOrder.shippingAddress.name}</p>
-                  <p className="text-gray-600">{foundOrder.shippingAddress.phone}</p>
-                  <p className="text-gray-600">
-                    {foundOrder.shippingAddress.address}, {foundOrder.shippingAddress.city}, {foundOrder.shippingAddress.state} - {foundOrder.shippingAddress.pincode}
+                <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-lg">
+                  <p className="font-semibold text-gray-800">{foundOrder.shippingAddress.name}</p>
+                  <p className="text-gray-700">{foundOrder.shippingAddress.phone}</p>
+                  <p className="text-gray-700 mt-2">
+                    {foundOrder.shippingAddress.address}, {foundOrder.shippingAddress.city}
+                  </p>
+                  <p className="text-gray-700">
+                    {foundOrder.shippingAddress.state} - {foundOrder.shippingAddress.pincode}
                   </p>
                 </div>
               </div>

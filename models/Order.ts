@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose'
 
 export interface IOrderItem {
-  productId: mongoose.Types.ObjectId
+  productId: string  // Changed from ObjectId to string to support various ID formats
   name: string
   price: number
   quantity: number
@@ -26,6 +26,13 @@ export interface IOrder extends Document {
   }
   paymentMethod: string
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded'
+  paymentDetails?: {
+    razorpayOrderId?: string
+    razorpayPaymentId?: string
+    razorpaySignature?: string
+    transactionId?: string
+    method?: string
+  }
   orderStatus: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
   subtotal: number
   tax: number
@@ -43,7 +50,7 @@ const OrderSchema = new Schema<IOrder>(
     orderNumber: { type: String, required: true, unique: true },
     items: [
       {
-        productId: { type: Schema.Types.ObjectId, ref: 'Product' },
+        productId: { type: String, required: true },  // Changed from ObjectId to String
         name: { type: String, required: true },
         price: { type: Number, required: true },
         quantity: { type: Number, required: true },
@@ -63,6 +70,13 @@ const OrderSchema = new Schema<IOrder>(
     },
     paymentMethod: { type: String, required: true },
     paymentStatus: { type: String, enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' },
+    paymentDetails: {
+      razorpayOrderId: { type: String },
+      razorpayPaymentId: { type: String },
+      razorpaySignature: { type: String },
+      transactionId: { type: String },
+      method: { type: String },
+    },
     orderStatus: {
       type: String,
       enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
