@@ -31,6 +31,9 @@ export default function CheckoutPage() {
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "processing" | "success" | "failed">("idle")
 
   const minOnlineAmount = 500
+  const codAdvancePercentage = 10
+  const codAdvanceAmount = Math.round(total * (codAdvancePercentage / 100))
+  const totalWithTax = total + Math.round(total * 0.18)
 
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -61,12 +64,14 @@ export default function CheckoutPage() {
     try {
       const orderId = `ORD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
 
+      const chargeAmount = paymentMethod === "cod" ? codAdvanceAmount : total
+
       let paymentResponse
       if (paymentMethod === "cod") {
         paymentResponse = await processCODPayment({
           method: "cod",
           orderId,
-          amount: total,
+          amount: chargeAmount,
           currency: "INR",
           userEmail: user.email,
         })
@@ -208,8 +213,12 @@ export default function CheckoutPage() {
                       checked={paymentMethod === "cod"}
                       onChange={(e) => setPaymentMethod(e.target.value)}
                     />
-                    <span className="font-semibold">Cash on Delivery (COD)</span>
+                    <div className="flex-1">
+                      <span className="font-semibold">Cash on Delivery (COD)</span>
+                      <p className="text-xs text-gray-600">Pay ₹{codAdvanceAmount} now (10%), rest at delivery</p>
+                    </div>
                   </label>
+
                   <label className="flex items-center gap-3 p-3 border border-gray-300 rounded cursor-pointer hover:bg-gray-50">
                     <input
                       type="radio"
@@ -219,10 +228,13 @@ export default function CheckoutPage() {
                       onChange={(e) => setPaymentMethod(e.target.value)}
                       disabled={total < minOnlineAmount}
                     />
-                    <div>
-                      <span className="font-semibold">Online Payment</span>
+                    <div className="flex-1">
+                      <span className="font-semibold">Online Payment & EMI</span>
                       {total < minOnlineAmount && (
                         <p className="text-xs text-gray-600">Minimum ₹{minOnlineAmount} required</p>
+                      )}
+                      {paymentMethod === "online" && total >= minOnlineAmount && (
+                        <p className="text-xs text-teal-600 font-medium">0% EMI available on select plans</p>
                       )}
                     </div>
                   </label>
@@ -283,16 +295,26 @@ export default function CheckoutPage() {
                   <span>₹{Math.round(total * 0.18).toLocaleString("en-IN")}</span>
                 </div>
               </div>
+
               <div className="flex justify-between text-lg font-bold mb-6">
                 <span>Total</span>
-                <span>₹{(total + Math.round(total * 0.18)).toLocaleString("en-IN")}</span>
+                <span>₹{totalWithTax.toLocaleString("en-IN")}</span>
               </div>
 
               <div className="mb-6 p-4 bg-gray-50 rounded">
                 <p className="text-sm font-semibold text-gray-700 mb-2">Payment Method</p>
                 <p className="text-sm capitalize font-medium">
-                  {paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment"}
+                  {paymentMethod === "cod" ? "Cash on Delivery" : "Online Payment & EMI"}
                 </p>
+                {paymentMethod === "cod" && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-xs">
+                    <p className="font-semibold text-blue-900">Payment Breakdown:</p>
+                    <p className="text-blue-800 mt-1">Now: ₹{codAdvanceAmount.toLocaleString("en-IN")} (10%)</p>
+                    <p className="text-blue-800">
+                      At Delivery: ₹{(totalWithTax - codAdvanceAmount).toLocaleString("en-IN")} (90%)
+                    </p>
+                  </div>
+                )}
               </div>
 
               <button
@@ -312,7 +334,7 @@ export default function CheckoutPage() {
                 ) : paymentStatus === "success" ? (
                   "Order Confirmed!"
                 ) : (
-                  "Place Order"
+                  `Pay ₹${(paymentMethod === "cod" ? codAdvanceAmount : totalWithTax).toLocaleString("en-IN")}`
                 )}
               </button>
               {!user && <p className="text-sm text-gray-600 text-center mt-3">Login required to proceed</p>}

@@ -8,13 +8,8 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "The House of Rare - Premium Hoodies",
-  description: "Shop our exclusive collection of premium hoodies. Street wear fashion for the discerning customer.",
-  openGraph: {
-    title: "The House of Rare",
-    description: "Premium Hoodies Collection",
-    type: "website",
-  },
+  title: "Rare Rabbit - Premium Hoodies & Apparel",
+  description: "Shop exclusive unisex hoodies and streetwear from Rare Rabbit. Premium quality, sustainable fashion.",
     generator: 'v0.app'
 }
 
@@ -25,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`font-sans antialiased`}>
+      <body className={`${_geist.className} antialiased`}>
         {children}
         <Analytics />
       </body>
