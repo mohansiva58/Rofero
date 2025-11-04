@@ -398,7 +398,6 @@ export default function AdminDashboard() {
                           <th className="text-left py-4 px-4 sm:px-6 font-semibold text-gray-700">Price</th>
                           <th className="text-left py-4 px-4 sm:px-6 font-semibold text-gray-700">Stock</th>
                           <th className="text-left py-4 px-4 sm:px-6 font-semibold text-gray-700">Status</th>
-                          <th className="text-left py-4 px-4 sm:px-6 font-semibold text-gray-700">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -491,7 +490,6 @@ export default function AdminDashboard() {
                           <th className="text-left py-4 px-4 sm:px-6 font-semibold text-gray-700">Payment</th>
                           <th className="text-left py-4 px-4 sm:px-6 font-semibold text-gray-700">Status</th>
                           <th className="text-left py-4 px-4 sm:px-6 font-semibold text-gray-700">Date</th>
-                          <th className="text-left py-4 px-4 sm:px-6 font-semibold text-gray-700">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -551,14 +549,6 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-4 px-4 sm:px-6">
                               <p className="text-gray-600">{new Date(order.createdAt).toLocaleDateString()}</p>
-                            </td>
-                            <td className="py-4 px-4 sm:px-6">
-                              <Link
-                                href={`/admin/orders/${order._id}`}
-                                className="px-3 py-1.5 bg-black text-white text-xs rounded hover:bg-gray-800 transition"
-                              >
-                                View
-                              </Link>
                             </td>
                           </tr>
                         ))}
