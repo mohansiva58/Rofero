@@ -327,7 +327,7 @@ function ShopPageContent() {
                         image: product.images[0] || "/placeholder.jpg",
                         colors: product.colors,
                       }} 
-                    />
+                     /> 
                   ))}
                 </div>
               ) : (
