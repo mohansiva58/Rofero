@@ -1,3 +1,5 @@
+"use client"
+
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
@@ -14,6 +16,7 @@ interface WishlistStore {
   removeItem: (id: number) => void
   isInWishlist: (id: number) => boolean
   toggleWishlist: (item: WishlistItem) => void
+  clearWishlist: () => void
 }
 
 export const useWishlist = create<WishlistStore>()(
@@ -37,6 +40,7 @@ export const useWishlist = create<WishlistStore>()(
           addItem(item)
         }
       },
+      clearWishlist: () => set({ items: [] }),
     }),
     {
       name: "wishlist-storage",

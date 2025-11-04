@@ -232,31 +232,24 @@ export default function Navbar() {
 
       {/* Mobile Sidebar Menu */}
       {isMobileOpen && (
-        <>
-          {/* Backdrop Overlay */}
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
-            onClick={() => setIsMobileOpen(false)}
-          />
-          
-          {/* Sidebar */}
-          <div className="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white z-50 md:hidden shadow-2xl overflow-y-auto transform transition-transform duration-300 ease-out">
-            {/* Sidebar Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-black text-white">
-              <div className="flex items-center gap-3">
-                <img
-                  src="https://images.yourstory.com/cs/images/companies/shoprarerabbitlogo-1719813730851.jpg?fm=auto&ar=1%3A1&mode=fill&fill=solid&fill-color=fff&format=auto&w=1920&q=75"
-                  alt="Logo"
-                  className="w-8 h-8 object-contain rounded"
-                />
-                <span className="font-bold text-lg tracking-wide">ROFERO</span>
-              </div>
-              <button
-                onClick={() => setIsMobileOpen(false)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                aria-label="Close menu"
-              >
-                <X size={20} />
+        <div className="md:hidden border-t border-gray-200 px-4 py-4 space-y-3 bg-white">
+          <Link href="/shop" className="block text-sm font-semibold hover:text-gray-600 transition">
+            COLLECTION
+          </Link>
+          <hr className="my-2" />
+          <Link href="/about" className="block text-sm font-semibold hover:text-gray-600 transition">
+            ABOUT US
+          </Link>
+          <Link href="/my-orders" className="block text-sm font-semibold hover:text-gray-600 transition">
+            TRACK ORDER
+          </Link>
+          {user ? (
+            <>
+              <Link href="/profile" className="block text-sm font-semibold hover:text-gray-600 transition">
+                MY PROFILE
+              </Link>
+              <button onClick={handleLogout} className="block w-full text-left text-sm font-semibold text-red-600 hover:text-red-700 transition">
+                LOGOUT
               </button>
             </div>
 

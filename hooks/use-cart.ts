@@ -2,6 +2,7 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { useEffect } from "react"
 
 interface CartItem {
   id: number

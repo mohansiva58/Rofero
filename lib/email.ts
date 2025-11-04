@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
     rejectUnauthorized: false
   }
 })
-
+// gg
 // Modern email templates
 const getEmailTemplate = (type: string, data: any) => {
   const baseStyles = `
@@ -156,7 +156,7 @@ const getEmailTemplate = (type: string, data: any) => {
         </div>
       </body>
       </html>
-    `,
+    ` ,
 
     orderDelivered: `
       <!DOCTYPE html>

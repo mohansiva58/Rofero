@@ -132,6 +132,13 @@ export const useAuth = create<AuthStore>()(
         try {
           await signOut(auth)
           set({ user: null })
+          
+          // Clear cart and wishlist from localStorage on logout
+          localStorage.removeItem("cart-storage")
+          localStorage.removeItem("wishlist-storage")
+          
+          // Dispatch storage event to notify other components
+          window.dispatchEvent(new Event("storage"))
         } catch (error: any) {
           throw new Error(error.message || "Logout failed")
         }
