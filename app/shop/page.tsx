@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
@@ -28,7 +28,7 @@ const priceRanges = [
   { label: "Over ₹3000", min: 3000, max: Number.POSITIVE_INFINITY },
 ]
 
-export default function ShopPage() {
+function ShopPageContent() {
   const searchParams = useSearchParams()
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -341,47 +341,47 @@ export default function ShopPage() {
 
             {/* Products Section */}
             <div className="flex-1 min-w-0">
-              {/* Top Bar - Sort and Filters */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => setMobileFiltersOpen(true)}
-                    className="lg:hidden flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                    Filters
-                  </button>
-                  <div className="hidden sm:block">
-                    <p className="text-sm text-gray-600">
-                      Showing <span className="font-semibold text-gray-900">{filteredProducts.length}</span> products
-                      {selectedCategory !== "All" && (
-                        <span className="ml-2">
-                          in <span className="font-semibold text-gray-900">{selectedCategory}</span>
-                        </span>
-                      )}
-                    </p>
-                  </div>
+              {/* Top Bar - Filters and Sort on Single Line */}
+              <div className="flex items-center justify-between mb-6 gap-2">
+                {/* Left side - Filters Button */}
+                <button
+                  onClick={() => setMobileFiltersOpen(true)}
+                  className="lg:hidden flex items-center gap-1.5 px-3 py-2 border-2 border-gray-200 rounded-lg hover:border-gray-900 hover:bg-gray-50 transition-all font-medium text-xs sm:text-sm shadow-sm"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  Filters
+                </button>
+
+                {/* Desktop Product Count */}
+                <div className="hidden lg:block">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-bold text-gray-900">{filteredProducts.length}</span> products
+                    {selectedCategory !== "All" && (
+                      <span className="ml-1.5 text-gray-500">
+                        in <span className="font-semibold text-gray-900">{selectedCategory}</span>
+                      </span>
+                    )}
+                  </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <label className="text-sm text-gray-600 whitespace-nowrap font-medium">Sort by:</label>
-                    <div className="relative flex-1 sm:flex-none min-w-[180px]">
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="appearance-none w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all bg-white pr-10"
-                      >
-                        <option value="newest">Newest First</option>
-                        <option value="price-low">Price: Low to High</option>
-                        <option value="price-high">Price: High to Low</option>
-                        <option value="discount">Best Discount</option>
-                      </select>
-                      <ChevronDown
-                        size={16}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400"
-                      />
-                    </div>
+                {/* Right side - Sort Dropdown */}
+                <div className="flex items-center gap-2">
+                  <label className="text-xs sm:text-sm text-gray-700 whitespace-nowrap font-medium hidden md:block">Sort:</label>
+                  <div className="relative min-w-[140px] sm:min-w-[180px]">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="appearance-none w-full px-3 py-2 text-xs sm:text-sm font-medium border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all bg-white pr-8 cursor-pointer hover:border-gray-400 shadow-sm"
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="price-low">Price: Low to High</option>
+                      <option value="price-high">Price: High to Low</option>
+                      <option value="discount">Best Discount</option>
+                    </select>
+                    <ChevronDown
+                      size={14}
+                      className="absolute right-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500"
+                    />
                   </div>
                 </div>
               </div>
@@ -413,7 +413,7 @@ export default function ShopPage() {
                         image: product.images[0] || "/placeholder.jpg",
                         colors: product.colors,
                       }} 
-                    />
+                     /> 
                   ))}
                 </div>
               ) : (
@@ -453,5 +453,24 @@ export default function ShopPage() {
       </main>
       <Footer />
     </>
+  )
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white">
+        <Navbar />
+        <main className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading products...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    }>
+      <ShopPageContent />
+    </Suspense>
   )
 }

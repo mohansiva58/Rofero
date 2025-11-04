@@ -1,14 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
-import { Package, Clock, CheckCircle, Truck, Mail, Lock, Search, Box, XCircle } from "lucide-react"
+import { Package, CheckCircle, Truck, Mail, Phone, Search, Box, XCircle, MapPin, CreditCard, RefreshCw } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 interface Order {
   _id: string
   orderNumber: string
   userEmail: string
+  userPhone?: string
   items: Array<{
     name: string
     quantity: number
@@ -28,305 +30,340 @@ interface Order {
     state: string
     pincode: string
   }
+  billingAddress?: {
+    name: string
+    phone: string
+    address: string
+    city: string
+    state: string
+    pincode: string
+  }
 }
 
 export default function TrackPage() {
-  const [searchId, setSearchId] = useState("")
-  const [email, setEmail] = useState("")
-  const [foundOrder, setFoundOrder] = useState<Order | null>(null)
+  const [searchType, setSearchType] = useState<"email" | "phone">("email")
+  const [searchValue, setSearchValue] = useState("")
+  const [orders, setOrders] = useState<Order[]>([])
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [showResult, setShowResult] = useState(false)
+  const [showResults, setShowResults] = useState(false)
+  const { user } = useAuth()
+
+  // Auto-populate if user is logged in
+  useEffect(() => {
+    if (user?.email) {
+      setSearchValue(user.email)
+      setSearchType("email")
+    }
+  }, [user])
 
   const handleSearch = async () => {
     setError("")
-    setFoundOrder(null)
-    setShowResult(false)
+    setOrders([])
+    setShowResults(false)
 
-    if (!searchId.trim()) {
-      setError("Please enter an order number")
+    if (!searchValue.trim()) {
+      setError(`Please enter your ${searchType}`)
       return
     }
 
-    if (!email.trim()) {
-      setError("Please enter your email address")
-      return
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address")
-      return
+    if (searchType === "email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(searchValue)) {
+        setError("Please enter a valid email address")
+        return
+      }
+    } else {
+      const phoneRegex = /^[0-9]{10}$/
+      if (!phoneRegex.test(searchValue)) {
+        setError("Please enter a valid 10-digit phone number")
+        return
+      }
     }
 
     setIsLoading(true)
 
     try {
-      const response = await fetch(`/api/orders?orderNumber=${searchId}&userEmail=${email}`)
+      const query = searchType === "email" 
+        ? `userEmail=${encodeURIComponent(searchValue)}`
+        : `userPhone=${encodeURIComponent(searchValue)}`
+      
+      const response = await fetch(`/api/orders?${query}`)
       const result = await response.json()
 
       if (result.success && result.data && result.data.length > 0) {
-        setFoundOrder(result.data[0])
-        setShowResult(true)
+        setOrders(result.data)
+        setShowResults(true)
       } else {
-        setError("Order not found or email doesn't match. Please check your details and try again.")
+        setError("No orders found for this " + searchType + ". Please check your details.")
       }
     } catch (error) {
-      console.error("Error tracking order:", error)
-      setError("Failed to track order. Please try again later.")
+      console.error("Error fetching orders:", error)
+      setError("Failed to fetch orders. Please try again later.")
     } finally {
       setIsLoading(false)
     }
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
-        return <CheckCircle className="text-green-600" size={24} />
+        return "bg-green-50 text-green-700 border-green-200"
       case "shipped":
-        return <Truck className="text-blue-600" size={24} />
-      case "packaged":
-        return <Box className="text-purple-600" size={24} />
-      case "confirmed":
-        return <Package className="text-indigo-600" size={24} />
+        return "bg-blue-50 text-blue-700 border-blue-200"
+      case "pending":
+        return "bg-yellow-50 text-yellow-700 border-yellow-200"
       case "cancelled":
-        return <XCircle className="text-red-600" size={24} />
+        return "bg-red-50 text-red-700 border-red-200"
       default:
-        return <Clock className="text-yellow-600" size={24} />
+        return "bg-gray-50 text-gray-700 border-gray-200"
     }
   }
 
-  const getTrackingSteps = (status: string) => {
+  const getStatusSteps = (status: string, createdAt: string) => {
     const steps = [
-      { label: "Order Placed", status: "pending", completed: true, date: foundOrder?.createdAt || "" },
-      { label: "Confirmed", status: "confirmed", completed: false, date: "" },
-      { label: "Packaged", status: "packaged", completed: false, date: "" },
-      { label: "Shipped", status: "shipped", completed: false, date: "" },
-      { label: "Delivered", status: "delivered", completed: false, date: "" },
+      { 
+        label: "Confirmed", 
+        icon: <CheckCircle size={24} />, 
+        completed: true,
+        date: new Date(createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })
+      },
+      { 
+        label: "On its way", 
+        icon: <Truck size={24} />, 
+        completed: status === "shipped" || status === "delivered",
+        date: status === "shipped" || status === "delivered" ? new Date(createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric" }) : ""
+      },
+      { 
+        label: "Out for delivery", 
+        icon: <Box size={24} />, 
+        completed: status === "delivered",
+        date: status === "delivered" ? new Date(createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric" }) : ""
+      },
+      { 
+        label: "Delivered", 
+        icon: <Package size={24} />, 
+        completed: status === "delivered",
+        date: status === "delivered" ? new Date(createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric" }) : ""
+      },
     ]
 
-    const statusIndex = steps.findIndex((s) => s.status === status)
-    return steps.map((step, index) => ({
-      ...step,
-      completed: index <= statusIndex,
-    }))
+    if (status === "cancelled") {
+      return [{
+        label: "Order Cancelled",
+        icon: <XCircle size={24} />,
+        completed: true,
+        date: new Date(createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })
+      }]
+    }
+
+    return steps
   }
 
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 py-12">
-        <div className="max-w-4xl mx-auto px-6">
+      <main className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-6xl mx-auto px-4">
           {/* Header */}
-          <div className="text-center mb-10 animate-fade-in">
-            <div className="relative inline-block mb-4">
-              <Package className="w-16 h-16 mx-auto text-gray-700 animate-bounce-slow" />
-              <div className="absolute inset-0 bg-blue-400 blur-xl opacity-20 animate-pulse"></div>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-gray-800 via-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Track Your Order
-            </h1>
-            <p className="text-gray-600 text-lg">Enter your order details to track your shipment in real-time</p>
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">Track Your Orders</h1>
+            <p className="text-gray-600">Enter your email or phone number to view all your orders</p>
           </div>
 
           {/* Search Card */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-6 md:p-8 mb-8 border border-gray-100 animate-slide-up">
-            <div className="space-y-4">
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+          <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
+            <div className="flex gap-4 mb-4">
+              <button
+                onClick={() => setSearchType("email")}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
+                  searchType === "email"
+                    ? "bg-black text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                <Mail className="inline mr-2" size={18} />
+                Email
+              </button>
+              <button
+                onClick={() => setSearchType("phone")}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
+                  searchType === "phone"
+                    ? "bg-black text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                <Phone className="inline mr-2" size={18} />
+                Phone
+              </button>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="flex-1">
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800"
-                />
-              </div>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={20} />
-                <input
-                  type="text"
-                  value={searchId}
-                  onChange={(e) => setSearchId(e.target.value)}
+                  type={searchType === "email" ? "email" : "tel"}
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                  placeholder="Enter Order ID (e.g., ORD-001)"
-                  className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-gray-800"
+                  placeholder={searchType === "email" ? "Enter your email address" : "Enter your 10-digit phone number"}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
               <button
                 onClick={handleSearch}
                 disabled={isLoading}
-                className="w-full px-6 py-3.5 bg-gradient-to-r from-gray-800 via-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
+                className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    Tracking Order...
+                    <RefreshCw className="animate-spin" size={18} />
+                    Searching...
                   </>
                 ) : (
                   <>
                     <Search size={18} />
-                    Track Order
+                    Track Orders
                   </>
                 )}
               </button>
             </div>
+
             {error && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg animate-shake">
-                <p className="text-red-600 text-sm font-medium">{error}</p>
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
           </div>
 
-          {/* Demo Info */}
-          {!showResult && (
-            <div className="mb-8 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl animate-slide-up">
-              <p className="text-sm text-gray-800">
-                <span className="font-semibold">Tip:</span> Enter your order number and registered email to track your order
-              </p>
-            </div>
-          )}
-
-          {/* Tracking Details */}
-          {showResult && foundOrder && (
-            <div className="bg-white/90 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 md:p-8 shadow-xl animate-slide-up-fade">
-              {/* Order Header */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8 pb-6 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(foundOrder.orderStatus)}
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-bold text-gray-800">{foundOrder.orderNumber}</h2>
-                    <p className="text-gray-600 text-sm mt-1">
-                      Order placed on {new Date(foundOrder.createdAt).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className={`px-4 py-2 rounded-full text-sm font-semibold capitalize ${
-                    foundOrder.orderStatus === "delivered"
-                      ? "bg-green-100 text-green-800"
-                      : foundOrder.orderStatus === "shipped"
-                      ? "bg-blue-100 text-blue-800"
-                      : foundOrder.orderStatus === "packaged"
-                      ? "bg-purple-100 text-purple-800"
-                      : foundOrder.orderStatus === "confirmed"
-                      ? "bg-indigo-100 text-indigo-800"
-                      : foundOrder.orderStatus === "cancelled"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-yellow-100 text-yellow-800"
-                  }`}
-                >
-                  {foundOrder.orderStatus}
-                </span>
-              </div>
-
-              {/* Order Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 pb-8 border-b border-gray-200">
-                <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-4">
-                  <p className="text-xs text-gray-600 mb-1 uppercase tracking-wide">Order Total</p>
-                  <p className="text-2xl font-bold text-gray-800">₹{foundOrder.total.toLocaleString("en-IN")}</p>
-                </div>
-                <div className="bg-gradient-to-br from-gray-50 to-purple-50 rounded-xl p-4">
-                  <p className="text-xs text-gray-600 mb-1 uppercase tracking-wide">Items</p>
-                  <p className="text-2xl font-bold text-gray-800">{foundOrder.items.length}</p>
-                </div>
-                <div className="bg-gradient-to-br from-gray-50 to-green-50 rounded-xl p-4">
-                  <p className="text-xs text-gray-600 mb-1 uppercase tracking-wide">Payment</p>
-                  <p className="text-sm font-semibold text-gray-800 capitalize">
-                    {foundOrder.paymentMethod === "cod" ? "Cash on Delivery" : "Paid Online"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Timeline */}
-              {foundOrder.orderStatus !== "cancelled" && (
-                <div className="mb-8">
-                  <h3 className="font-bold text-xl mb-6 text-gray-800">Delivery Timeline</h3>
-                  <div className="relative">
-                    <div className="absolute left-2 top-2 bottom-2 w-1 bg-gray-200 rounded-full"></div>
-                    <div
-                      className="absolute left-2 top-2 w-1 bg-gradient-to-b from-green-600 to-blue-600 rounded-full transition-all duration-1000 ease-out"
-                      style={{
-                        height: `${(getTrackingSteps(foundOrder.orderStatus).filter((t) => t.completed).length / getTrackingSteps(foundOrder.orderStatus).length) * 100}%`,
-                      }}
-                    ></div>
-
-                    <div className="space-y-6">
-                      {getTrackingSteps(foundOrder.orderStatus).map((event, index) => (
-                        <div key={index} className={`flex gap-4 items-start relative animate-slide-in-left`} style={{ animationDelay: `${index * 100}ms` }}>
-                          <div className="relative z-10">
-                            <div
-                              className={`w-5 h-5 rounded-full border-4 border-white shadow-md transition-all duration-300 ${
-                                event.completed ? "bg-gradient-to-br from-green-500 to-blue-600 scale-110" : "bg-gray-300"
-                              }`}
-                            />
-                          </div>
-                          <div className="flex-1 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                            <p className={`font-semibold ${event.completed ? "text-gray-800" : "text-gray-400"}`}>
-                              {event.label}
-                            </p>
-                            {event.completed && event.date && (
-                              <p className="text-sm text-gray-500 mt-1">
-                                {new Date(event.date).toLocaleDateString("en-IN")}
-                              </p>
-                            )}
-                            {!event.completed && <p className="text-xs text-gray-400 mt-1">Pending</p>}
-                          </div>
+          {/* Orders List */}
+          {showResults && orders.length > 0 && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold">Your Orders ({orders.length})</h2>
+              
+              {orders.map((order) => (
+                <div key={order._id} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                  {/* Order Header */}
+                  <div className="p-6 border-b bg-gray-50">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <CheckCircle className="text-green-600" size={20} />
+                          <h3 className="text-xl font-bold">Order {order.orderNumber}</h3>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {foundOrder.orderStatus === "cancelled" && (
-                <div className="mb-8 p-6 bg-red-50 border border-red-200 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <XCircle className="text-red-600" size={24} />
-                    <h3 className="font-bold text-xl text-red-800">Order Cancelled</h3>
-                  </div>
-                  <p className="text-red-700">This order has been cancelled. Contact support for more information.</p>
-                </div>
-              )}
-
-              {/* Items */}
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="font-bold text-xl mb-4 text-gray-800">Items in This Order</h3>
-                <div className="space-y-3">
-                  {foundOrder.items.map((item, i) => (
-                    <div key={i} className="flex items-center gap-4 bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-lg animate-slide-in-left" style={{ animationDelay: `${i * 50}ms` }}>
-                      <img
-                        src={item.image || "/placeholder.svg"}
-                        alt={item.name}
-                        className="w-16 h-16 object-cover rounded border border-gray-200"
-                      />
-                      <div className="flex-1">
-                        <p className="text-gray-800 font-semibold">{item.name}</p>
                         <p className="text-sm text-gray-600">
-                          Qty: {item.quantity} × ₹{item.price.toLocaleString("en-IN")}
+                          Thank you {order.shippingAddress.name}!
                         </p>
                       </div>
-                      <p className="font-bold text-gray-800">₹{(item.price * item.quantity).toLocaleString("en-IN")}</p>
+                      <span className={`px-4 py-2 rounded-lg border font-semibold text-sm capitalize ${getStatusColor(order.orderStatus)}`}>
+                        {order.orderStatus}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* Shipping Address */}
-              <div className="mt-8 border-t border-gray-200 pt-6">
-                <h3 className="font-bold text-xl mb-4 text-gray-800">Shipping Address</h3>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-800 font-semibold">{foundOrder.shippingAddress.name}</p>
-                  <p className="text-gray-600">{foundOrder.shippingAddress.phone}</p>
-                  <p className="text-gray-600">
-                    {foundOrder.shippingAddress.address}, {foundOrder.shippingAddress.city}, {foundOrder.shippingAddress.state} - {foundOrder.shippingAddress.pincode}
-                  </p>
+                  {/* Tracking Timeline */}
+                  <div className="p-6 border-b">
+                    {order.orderStatus !== "cancelled" ? (
+                      <div className="flex justify-between items-center relative">
+                        {/* Progress Line */}
+                        <div className="absolute top-6 left-0 right-0 h-1 bg-gray-200 -z-10"></div>
+                        <div 
+                          className="absolute top-6 left-0 h-1 bg-blue-600 -z-10 transition-all duration-500"
+                          style={{ 
+                            width: `${(getStatusSteps(order.orderStatus, order.createdAt).filter(s => s.completed).length / getStatusSteps(order.orderStatus, order.createdAt).length) * 100}%` 
+                          }}
+                        ></div>
+
+                        {getStatusSteps(order.orderStatus, order.createdAt).map((step, index) => (
+                          <div key={index} className="flex flex-col items-center flex-1">
+                            <div className={`p-3 rounded-full mb-2 ${step.completed ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-400"}`}>
+                              {step.icon}
+                            </div>
+                            <p className={`text-xs font-semibold text-center ${step.completed ? "text-gray-900" : "text-gray-400"}`}>
+                              {step.label}
+                            </p>
+                            {step.date && (
+                              <p className="text-xs text-gray-500 mt-1">{step.date}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <XCircle className="mx-auto text-red-600 mb-2" size={48} />
+                        <p className="text-lg font-semibold text-red-600">Order Cancelled</p>
+                        <p className="text-sm text-gray-600 mt-1">This order has been cancelled</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Order Details */}
+                  <div className="p-6 space-y-4">
+                    {/* Delivery Message */}
+                    {order.orderStatus === "delivered" && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <p className="font-semibold text-green-800">Your shipment has been delivered</p>
+                        <p className="text-sm text-green-700 mt-1">
+                          Your shipment has been delivered to the address you provided. If you haven't received it, or if you have any other problems, please contact us.
+                        </p>
+                        <button className="text-blue-600 text-sm font-semibold mt-2 flex items-center gap-1 hover:underline">
+                          <RefreshCw size={14} />
+                          Re-order the same items
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Tracking Number */}
+                    {order.orderStatus === "shipped" || order.orderStatus === "delivered" ? (
+                      <div>
+                        <p className="font-semibold text-gray-700 mb-1">DHL tracking number:</p>
+                        <p className="text-blue-600 font-mono">123456</p>
+                      </div>
+                    ) : null}
+
+                    {/* Customer Information Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                      {/* Contact Information */}
+                      <div>
+                        <h4 className="font-semibold mb-3">Contact information</h4>
+                        <p className="text-gray-700">{order.shippingAddress.name}</p>
+                      </div>
+
+                      {/* Payment Method */}
+                      <div>
+                        <h4 className="font-semibold mb-3">Payment method</h4>
+                        <p className="text-gray-700">
+                          {order.paymentMethod === "cod" 
+                            ? `Cash on delivery (COD) - ₹${order.total.toLocaleString("en-IN")}`
+                            : `Paid Online - ₹${order.total.toLocaleString("en-IN")}`
+                          }
+                        </p>
+                      </div>
+
+                      {/* Shipping Address */}
+                      <div>
+                        <h4 className="font-semibold mb-3">Shipping address</h4>
+                        <p className="text-gray-700">{order.shippingAddress.name}</p>
+                        <p className="text-gray-600 text-sm">
+                          {order.shippingAddress.address}<br />
+                          {order.shippingAddress.city}, {order.shippingAddress.state}<br />
+                          {order.shippingAddress.pincode}
+                        </p>
+                      </div>
+
+                      {/* Billing Address */}
+                      <div>
+                        <h4 className="font-semibold mb-3">Billing address</h4>
+                        <p className="text-gray-700">{order.billingAddress?.name || order.shippingAddress.name}</p>
+                        <p className="text-gray-600 text-sm">
+                          {order.billingAddress?.address || order.shippingAddress.address}<br />
+                          {order.billingAddress?.city || order.shippingAddress.city}, {order.billingAddress?.state || order.shippingAddress.state}<br />
+                          {order.billingAddress?.pincode || order.shippingAddress.pincode}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           )}
         </div>
