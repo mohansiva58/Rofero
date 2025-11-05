@@ -187,7 +187,7 @@ export default function TrackPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-gray-50 py-8">
+      <main className="min-h-screen bg-gray-50 py-8 pb-20 md:pb-8">
         <div className="max-w-6xl mx-auto px-4">
           {/* Header
           <div className="mb-8">

@@ -6,7 +6,7 @@ export default function AboutPage() {
   return (
     <>
       <Navbar />
-      <main className="bg-white">
+      <main className="bg-white pb-20 md:pb-0">
         {/* Hero Section */}
                 <section className="py-20 md:py-32 px-4 md:px-8 bg-white">
           <div className="max-w-5xl mx-auto text-center">

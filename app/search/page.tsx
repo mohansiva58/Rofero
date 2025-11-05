@@ -127,7 +127,7 @@ export default function SearchPage() {
   return (
     <>
       <Navbar />
-      <main className="bg-white min-h-screen">
+      <main className="bg-white min-h-screen pb-20 md:pb-0">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
           {/* Search header */}
           <div className="mb-8">

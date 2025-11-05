@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, Suspense, useRef } from "react"
 import { Search, X, Menu, Heart, ShoppingCart, User, LogOut } from "lucide-react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useCart } from "@/hooks/use-cart"
@@ -12,6 +12,8 @@ function NavbarContent() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
+  const searchWrapperRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -42,6 +44,31 @@ function NavbarContent() {
     }
   }, [isMobileOpen])
 
+  // Focus input when inline search opens (desktop) and handle outside/Esc
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [isSearchOpen])
+
+  useEffect(() => {
+    function handleDocClick(e: MouseEvent) {
+      if (!isSearchOpen) return
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false)
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setIsSearchOpen(false)
+    }
+    document.addEventListener("mousedown", handleDocClick)
+    document.addEventListener("keydown", handleKey)
+    return () => {
+      document.removeEventListener("mousedown", handleDocClick)
+      document.removeEventListener("keydown", handleKey)
+    }
+  }, [isSearchOpen])
+
   const handleSearch = () => {
     if (searchQuery.trim()) {
       router.push(`/shop?search=${encodeURIComponent(searchQuery)}`)
@@ -63,7 +90,7 @@ function NavbarContent() {
   }
 
   return (
-    <nav className="w-full bg-white sticky top-0 z-50 border-b border-gray-200">
+  <nav className="w-full bg-white sticky top-0 z-50 border-b border-gray-200 mb-2.5 sm:mb-0">
       {/* Main Navbar */}
       <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 py-2 md:py-3 max-w-7xl mx-auto w-full">
         {/* Left - Mobile Menu Button + Desktop Menu */}
@@ -109,13 +136,42 @@ function NavbarContent() {
 
         {/* Right - Icons */}
         <div className="flex items-center gap-2 md:gap-4">
-          <button
-            onClick={() => setIsSearchOpen(!isSearchOpen)}
-            className="p-2 hover:bg-gray-100 rounded transition"
-            aria-label="Search"
-          >
-            <Search size={18} className="md:w-5 md:h-5" />
-          </button>
+          <div ref={searchWrapperRef} className="relative flex items-center">
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="p-2 hover:bg-gray-100 rounded transition"
+              aria-label="Search"
+            >
+              <Search size={18} className="md:w-5 md:h-5" />
+            </button>
+
+            {/* Inline expanding input for all screens */}
+            <div className="flex items-center">
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search products, categories..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className={`transition-all duration-200 ease-in-out text-sm rounded focus:outline-none focus:ring-2 focus:ring-black ${
+                  isSearchOpen
+                    ? "w-full md:w-64 px-3 py-1 border border-gray-300 ml-2 opacity-100"
+                    : "w-0 md:w-0 px-0 py-0 border-0 opacity-0"
+                }`}
+                aria-label="Search products"
+              />
+              {searchQuery && isSearchOpen && (
+                <button
+                  onClick={handleClearSearch}
+                  className="ml-2 p-1 hover:bg-gray-100 rounded-full transition"
+                  aria-label="Clear search"
+                >
+                  <X size={14} className="text-gray-600" />
+                </button>
+              )}
+            </div>
+          </div>
 
           <Link
             href="/wishlist"
@@ -214,40 +270,7 @@ function NavbarContent() {
         </div>
       </div>
 
-      {/* Search Bar */}
-      {isSearchOpen && (
-        <div className="border-t border-gray-200 px-4 md:px-6 lg:px-8 py-3 bg-white">
-          <div className="flex gap-2 max-w-7xl mx-auto">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="Search products, categories, colors..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black pr-10"
-                autoFocus
-              />
-              {searchQuery && (
-                <button
-                  onClick={handleClearSearch}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition"
-                  aria-label="Clear search"
-                >
-                  <X size={16} className="text-gray-500" />
-                </button>
-              )}
-            </div>
-            <button
-              onClick={handleSearch}
-              className="px-4 md:px-6 py-2 bg-black text-white text-sm rounded hover:bg-gray-800 transition flex items-center gap-2"
-            >
-              <Search size={16} />
-              <span className="hidden sm:inline">Search</span>
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Search Bar (handled inline via the icon wrapper; mobile full-width removed) */}
 
       {/* Mobile Sidebar Menu */}
       {isMobileOpen && (

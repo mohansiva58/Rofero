@@ -18,7 +18,7 @@ export default function Footer() {
   }
 
   return (
-    <footer className="bg-white border-t border-gray-200">
+    <footer className="hidden sm:block bg-white border-t border-gray-200">
       
 
       {/* Footer Content */}

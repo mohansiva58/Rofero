@@ -154,7 +154,7 @@ export default function ProfilePage() {
   return (
     <>
       <Navbar />
-      <main className="bg-gray-50 min-h-screen">
+      <main className="bg-gray-50 min-h-screen pb-20 md:pb-0">
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 py-4">

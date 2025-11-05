@@ -24,7 +24,7 @@ export default function WishlistPage() {
   return (
     <>
       <Navbar />
-      <main className="bg-white min-h-screen">
+      <main className="bg-white min-h-screen pb-20 md:pb-0">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
           <div className="mb-8 md:mb-12">
             <h1 className="text-3xl md:text-4xl font-bold mb-2">MY WISHLIST</h1>

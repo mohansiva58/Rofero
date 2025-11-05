@@ -179,7 +179,7 @@ function ShopPageContent() {
   return (
     <>
       <Navbar />
-      <main className="bg-white min-h-screen">
+      <main className="bg-white min-h-screen pb-20 md:pb-0">
         {/* Search Results Header */}
         {searchQuery && (
           <div className="border-b border-gray-100 px-4 sm:px-6 lg:px-8 py-6">

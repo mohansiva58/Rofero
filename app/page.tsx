@@ -10,7 +10,7 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <main className="bg-white">
+      <main className="bg-white pb-20 md:pb-0">
         <HeroCarousel />
         <HoodiesSection />
         <NewArrivals />

@@ -292,7 +292,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         </div>
       )}
 
-      <main className="bg-white">
+      <main className="bg-white pb-20 md:pb-0">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-2 md:py-4">
           {/* Breadcrumb */}
           <div className="text-xs md:text-sm text-gray-600 mb-4 flex items-center gap-2 overflow-x-auto whitespace-nowrap">
@@ -368,8 +368,12 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
             {/* Product Details */}
             <div className="space-y-4">
-
-            
+              {/* OUT OF STOCK Banner */}
+              {isOutOfStock && (
+                <div className="bg-red-600 text-white px-4 py-2 rounded-lg text-center font-bold">
+                  OUT OF STOCK
+                </div>
+              )}
               
               {/* Product Title */}
               <div>
